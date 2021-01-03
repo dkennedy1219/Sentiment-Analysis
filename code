@@ -1,0 +1,166 @@
+import string
+
+def get_words(comment):
+    """
+    Get a list of words (in lowercase without punctuation) from a written 
+    comment
+     
+    >>> get_words('A review without punctuation')
+    ['a', 'review', 'without', 'punctuation']
+    >>> get_words('This includes: punctuation.')
+    ['this', 'includes', 'punctuation']
+    """
+    words = comment.strip().split()
+
+    # Remove punctuation and convert to lowercase
+    i = 0
+    while i < len(words):
+        cleaned = ''
+        for ch in words[i]:
+            if ch in string.ascii_letters or ch in string.digits:
+                cleaned += ch.lower()
+        if len(cleaned) == 0:
+            del words[i]
+        else:
+            words[i] = cleaned
+            i += 1
+
+    return words
+
+def train(filename):
+    """
+    Compute word scores from a file of training data
+
+    >>> train('hw10_small_train.txt')
+    {'this': 3.0, 'product': 3.0, 'is': 3.5, 'good': 5.0, 'well': 4.5, 'made': 5.0, 'functions': 4.0, 'a': 3.0, 'mediocre': 3.0, 'broke': 2.0, 'i': 2.0, 'am': 2.0, 'dissatisfied': 2.0, 'junk': 1.0, 'does': 1.0, 'not': 1.0, 'function': 1.0, 'as': 1.0, 'advertised': 1.0}
+    """
+    #try to open file
+    try:
+        final_dict = total_value_words(filename)           
+        for k in final_dict:
+            (rate, count) = final_dict.get(k)
+            word_value = round((rate/count), 2)
+            final_dict[k] = word_value
+        return final_dict
+    #if file does not exist instead of crashing print message and return empty dictionary
+    except FileNotFoundError:
+        print("Unable to read the training file")
+        return {}
+        
+def total_value_words(filename):
+    """
+    Opens file and assings values to each word based on the comments rating.
+    Returns dictionary containing words as keys and how many times the word appeared in the reviews
+    """
+
+    dictionary = {}
+    infile = open(filename, 'r')
+    count = 1
+    #lines get cleaned in get_word func 
+    for line in infile:
+        cleaned = get_words(line)
+        num = int(line[0])
+        #each word in the list of cleaned is evaluated
+        for i in range(1, len(cleaned)):
+            word = cleaned[i]
+            if word not in dictionary:
+                #if its a new word it gets added to the dictionary 
+                dictionary[word] = (num, count)
+            else:
+                #if an existing word the value of that word is increased by the rating of the comment
+                #and the count of the number of times the word appeared is increased by 1
+                (a, b) = dictionary.get(word)
+                a += num
+                b += 1
+                dictionary[word] = (a, b)
+    infile.close()
+    return dictionary
+
+
+def analyze(model, filename):
+    """
+    Compute numeric ratings for a file of written comments
+
+    >>> analyze({'this': 3.0, 'product': 3.0, 'is': 3.5, 'good': 5.0, 'well': 4.5, 'made': 5.0, 'functions': 4.0, 'a': 3.0, 'mediocre': 3.0, 'broke': 2.0, 'i': 2.0, 'am': 2.0, 'dissatisfied': 2.0, 'junk': 1.0, 'does': 1.0, 'not': 1.0, 'function': 1.0, 'as': 1.0, 'advertised': 1.0}, 'hw10_small_analyze.txt')
+    [(3.5, 'This product works very well.'), (2.7, 'This product is a piece of junk.'), (4.0, 'Very poorly made product!')]
+    """
+    #function attempts to open file, if not found program will not crash
+    try:
+        infile = open(filename, 'r')
+    except FileNotFoundError:
+        print("Unable to read analyze file")
+        return []
+
+    ratings_comments = []
+    #each line in file is passed through rate_line function
+    for line in infile:
+        ave_value = rate_line(line, model)  
+        (a) = (ave_value, line.strip())
+        ratings_comments.append(a)
+    infile.close()
+    
+    return ratings_comments
+    
+def rate_line(line, model):
+    """
+    Computes average value of each line given a line and a model
+    """
+    
+    line_value = 0
+    num = 0
+    #line is first converted to list
+    words_list = get_words(line)
+    for word in words_list:
+        #if word is found in model, it is used to change the value of the overall line
+        if word in model.keys():
+            line_value += model[word]
+            num += 1
+    #average value of the line is rounded and returned
+    ave_value = round((line_value/num), 2)
+    return ave_value
+
+def print_model(model):
+    """
+    Prints each word in the model with its assigned value in alphabetical order
+    """
+    L1 = []
+    new_line = ''
+    for k in model:
+        #the line is built word + value and added to a list
+        new_line = str(k) + ' ' + str(model.get(k)) 
+        L1.append(new_line)
+    L1.sort()
+    #each line is printed after being sorted
+    for line in L1:
+        print(line)
+
+def print_analysis(ratings):
+    """
+    Prints the rating of each comment analyzed
+    """
+    for i in range(len(ratings)):
+        (a, b) = ratings[i]
+        #new string is built and printed
+        print(str(a) + ' ' + str(b))
+        
+
+def main():
+    '''
+    Sentiment analysis program
+    '''
+    
+    tfilename = input("Enter training file name: ")
+    model = train(tfilename)
+    print_model(model)
+    
+    afilename = input("Enter analyze file name: ")
+    ratings = analyze(model, afilename)
+    print_analysis(ratings)
+    
+    return None
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
+    main()
+
